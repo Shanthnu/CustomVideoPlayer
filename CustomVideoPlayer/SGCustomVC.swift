@@ -118,7 +118,7 @@ class SGCustomVC: UIViewController {
         progressView.tintColor = .white
          progressView.backgroundColor = .black.withAlphaComponent(0.6)
          overlayView.addSubview(progressView)
-        progressView.progress = 0.2
+        //progressView.progress = 0.2
         
         
         NSLayoutConstraint.activate([
@@ -182,6 +182,9 @@ extension SGCustomVC {
                     self.containerView.layer.insertSublayer(self.playerLayer, at: 0)
                     self.playerLayer.frame = self.containerView.bounds
                     
+                    
+                    // Set up time observer to update the ProgressView
+                    self.trackPlaybackProgress()
                 
                 }
                 
@@ -189,6 +192,34 @@ extension SGCustomVC {
                 print("Failed to load video -", error)
             }
         }
+    }
+    
+    func trackPlaybackProgress() {
+        guard let player else {
+            return
+        }
+        
+        let interval = CMTime(seconds: 1, preferredTimescale: CMTimeScale(NSEC_PER_SEC))
+        //NSEC_PER_SEC ensures precise 1-second intervals.
+        
+        timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+            guard let self, let duration = self.player.currentItem?.duration.seconds else { return }
+            
+            // Animate the Progress Bar
+            UIView.animate(withDuration: 1, delay: 0, options: .curveLinear) {
+                self.progressView.setProgress(Float(time.seconds) / Float(duration), animated: true)
+                self.view.layoutIfNeeded()
+            }
+        }
+        
+        
+        /**
+         This adds a periodic time observer to the player that:
+         Runs every 1 second.
+         Executes on the main thread (important for updating UI).
+         Captures self weakly to avoid memory leaks.
+         timeObserverToken is stored so you can later remove it in deinit, which is crucial for cleanup.
+         */
         
         
     }
@@ -203,7 +234,6 @@ extension SGCustomVC {
 //MARK: - Objc Methods
 extension SGCustomVC {
     @objc func playPauseToggle() {
-        print("playPauseToggle")
         
         guard let player else {
             return
